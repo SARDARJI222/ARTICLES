@@ -1,0 +1,55 @@
+The objective was to train machine learning models to solve 6x6 puzzles in two categories: Landmarks and Faces. The task involves predicting the correct permutation of pieces for each puzzle, based on the given correct permutations. The predictions must be made for the testing set of both categories and concatenated into a single CSV file. In addition, the predictions must be converted into a valid submission format.
+
+The dataset contains 6x6 Landmarks and Faces puzzle. You can find it here.
+
+To begin, a function was developed that rearranged the puzzle pieces to their proper positions, given the appropriate permutation. The index of the puzzle that needs to be rearranged and the correct permutations are taken in by this function. It stacks the picture, modifies the unique pieces as indicated by the right stage, and returns the first and reworked pictures for correlation.
+
+After that, a split of 80:20 was used to divide the training and validation data. Each image was divided into 36 puzzle pieces, each of which was stored in its own array, and a function was developed to load all of the images directly. The capability emphasizes through each record of the dataframe, loads the relating picture, and stores each unique piece in a rundown. The subsequent rundown of unique pieces is then put away in a cluster. For both the training and validation datasets, this procedure is repeated.
+
+In the subsequent phases of the project, these functions will be utilized for the training and evaluation of machine learning models.
+
+I created a function names load_labels which took the values from the dataframe and returning a 3D numpy array with shape (n_samples, n_pieces, n_positions)Since we have a 6x6 grid with 36 pieces, each sample in the array corresponds to a single puzzle image, and each puzzle piece has a one-hot encoded vector of length n_positions. In our case, n_positions equals 36. The load_labels() function goes through each puzzle image and its 36 pieces one by one, figuring out where each piece belongs in the final solution and setting the one-hot encoded vector for it in the label array. Our image arrays and this label array are then used to train our machine learning models.
+
+Network Architecture
+#here we only define the layers and feed the input later
+conv1 = tf.keras.layers.Conv2D(16, (5,5), strides=5)
+conv2 = tf.keras.layers.Conv2D(32, (5,5), strides=5)
+flat = tf.keras.layers.Flatten()
+dense1 = tf.keras.layers.Dense(36)
+
+#now we feed each puzzle piece one by one to the layers and store the encodings
+mid = []
+for i in range(36):
+    x = conv1(inp[:,i]) #first dimension is batch_size
+    x = conv2(x)
+    x = flat(x)
+    x = dense1(x)
+    mid.append(x)
+x = tf.keras.layers.concatenate(mid, axis=-1) #the encodings of all the pieces are concatenated
+x = tf.keras.layers.Reshape((36,36))(x) #the output is reshaped into a 36x36 output
+x = tf.keras.layers.Softmax(axis=-1)(x) #softmax to calculate probability
+
+
+model = tf.keras.Model(inputs=inp, outputs=x)
+adam = keras.optimizers.Adam(lr=.001)
+model.compile(optimizer=adam, loss="categorical_crossentropy",metrics=['accuracy'])
+
+tf.keras.utils.plot_model(model)
+# an image of our model architecture
+# double click to expand
+Can you explain the architecture?
+To start with, we characterize the layers of the model. Dense convolutional layers make up the layers. We have two convolutional layers, conv1 and conv2, with a stride of 5 and a 5x5 filter. The output of the convolutional layers is then flattened by a flatten layer. Last but not least, we have a 36-unit dense layer (dense1). The model’s input shape is not specified here because it will be determined when the input data are added later.
+
+Then, we feed each unique piece individually to the layers and store the encodings in a rundown called mid. Each of the 36 pieces is processed iteratively through the previously defined convolutional and dense layers. The dense layer’s output is then added to the middle list.
+
+The concatenate layer from Keras is used to combine the encodings of all the pieces after they have been processed through the layers. As a result, the entire puzzle uses the same encoding.
+
+Using the Reshape layer from Keras, we then reshape the concatenated encoding into a 36x36 output. Lastly, we use a softmax activation function to determine the probability of each piece’s placement in the puzzle.
+
+The model is then compiled with an optimizer (Adam), a loss function (categorical cross-entropy), and a metric (accuracy) and defined as a whole using the defined input and output layers.
+
+Using the fit function from Keras, we train the model on the training data (train_img and train_labels) following its definition. We train for 50 epochs and use a 32-member batch. Additionally, we use the validation data (val_img and val_labels) to validate the model.
+
+Finally, we use the Keras function plot_model to plot a model diagram and print a summary of the model’s architecture.
+
+After getting the summary i aligned the predictions to their names in a CSV and separated the prediction for each column and rows
